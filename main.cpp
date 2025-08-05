@@ -40,7 +40,7 @@ int main()
             .port = server_data.port
         };
 
-        server = enet_host_create (ENET_ADDRESS_TYPE_IPV4, &address, 50zu, 2zu, 0, 0);
+        server = enet_host_create (ENET_ADDRESS_TYPE_IPV4, &address, 250zu, 2zu, 0, 0);
         std::thread(&https::listener, server_data).detach();
     } // @note delete server_data, address
     server->usingNewPacketForServer = true;
