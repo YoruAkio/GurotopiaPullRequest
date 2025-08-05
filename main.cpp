@@ -1,6 +1,6 @@
 /*
     @copyright gurotopia (c) 2024-05-25
-    @version perent SHA: f1fbcdfce9f4249da58f88c6a21fc543e5d6637a 2025-08-02
+    @version perent SHA: bd19b37ecb10406f5cae919f5db316d5b19e69ab 2025-08-04
 */
 #include "include/pch.hpp"
 #include "include/event_type/__event_type.hpp"
@@ -18,9 +18,9 @@ int main()
     printf("sqlite/sqlite3 %s\n", sqlite3_sourceid());
     printf("openssl/openssl %s\n", OpenSSL_version(OPENSSL_VERSION_STRING));
     
-    if (!std::filesystem::exists("db")) std::filesystem::create_directory("db");
+    std::filesystem::create_directory("db");
+    init_shouhin_tachi();
 
-    std::thread(&https::listener, "127.0.0.1", 17091).detach();
     {
         ENetCallbacks callbacks{
             .malloc = &mi_malloc,
@@ -30,36 +30,36 @@ int main()
         enet_initialize_with_callbacks(ENET_VERSION, &callbacks);
     } // @note delete callbacks
     {
+        ::_server_data server_data = init_server_data();
         ENetAddress address{
             .type = ENET_ADDRESS_TYPE_IPV4, 
-            .port = 17091
+            .port = server_data.port
         };
-        enet_address_is_any(&address);
 
         server = enet_host_create (ENET_ADDRESS_TYPE_IPV4, &address, 50zu, 2zu, 0, 0);
-    } // @note delete address
-    
+        std::thread(&https::listener, server_data).detach();
+    } // @note delete server_data, address
     server->usingNewPacketForServer = true;
     server->checksum = enet_crc32;
     enet_host_compress_with_range_coder(server);
+
+    try // @note for people who don't use a debugger..
     {
-        try // @note for people who don't use a debugger..
-        {
-            const uintmax_t size = std::filesystem::file_size("items.dat");
+        const uintmax_t size = std::filesystem::file_size("items.dat");
 
-            im_data.resize(im_data.size() + size + 1/*@todo*/); // @note state + items.dat
-            im_data[0zu] = std::byte{ 04 }; // @note 04 00 00 00
-            im_data[4zu] = std::byte{ 0x10 }; // @note 16 00 00 00
-            im_data[16zu] = std::byte{ 0x08 }; // @note 08 00 00 00
-            *reinterpret_cast<std::uintmax_t*>(&im_data[56zu]) = size;
+        im_data.resize(im_data.size() + size + 1/*@todo*/); // @note state + items.dat
+        im_data[0zu] = std::byte{ 04 }; // @note 04 00 00 00
+        im_data[4zu] = std::byte{ 0x10 }; // @note 16 00 00 00
+        im_data[16zu] = std::byte{ 0x08 }; // @note 08 00 00 00
+        *reinterpret_cast<std::uintmax_t*>(&im_data[56zu]) = size;
 
-            std::ifstream("items.dat", std::ios::binary)
-                .read(reinterpret_cast<char*>(&im_data[60zu]), size);
-        }
-        catch (std::filesystem::filesystem_error error) { puts(error.what()); }
+        std::ifstream("items.dat", std::ios::binary)
+            .read(reinterpret_cast<char*>(&im_data[60zu]), size);
+
+        cache_items();
     } // @note delete size
-    cache_items();
-    init_shouhin_tachi();
+    catch (std::filesystem::filesystem_error error) { puts(error.what()); }
+    catch (...) { puts("unknown error occured during decoding items.dat"); } // @note if this appears, it's probably cache_items()...
 
     ENetEvent event{};
     while (true)

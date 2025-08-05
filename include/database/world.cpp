@@ -202,7 +202,7 @@ void state_visuals(ENetEvent& event, state &&state)
 {
     peers(event, PEER_SAME_WORLD, [&](ENetPeer& p) 
     {
-        send_data(p, compress_state(std::move(state)));
+        send_data(p, compress_state(state));
     });
 }
 
@@ -215,9 +215,17 @@ void tile_apply_damage(ENetEvent& event, state state, block &block)
 	state_visuals(event, std::move(state));
 }
 
+void modify_item_inventory(ENetEvent& event, const std::array<short, 2zu>& im)
+{
+    ::state state{
+        .type = (im[1] << 16) | 0x0d, // @noote 0x00{}000d
+        .id = im[0]
+    };
+    state_visuals(event, std::move(state));
+}
+
 int item_change_object(ENetEvent& event, const std::array<short, 2zu>& im, const std::array<float, 2zu>& pos, signed uid) 
 {
-    std::vector<std::byte> compress{};
     state state{.type = 0x0e}; // @note PACKET_ITEM_CHANGE_OBJECT
     if (im[1] == 0 || im[0] == 0)
     {
@@ -237,11 +245,7 @@ int item_change_object(ENetEvent& event, const std::array<short, 2zu>& im, const
         state.id = it.first->second.id;
         state.pos = {it.first->second.pos[0] * 32, it.first->second.pos[1] * 32};
     }
-    compress = compress_state(std::move(state));
-    peers(event, PEER_SAME_WORLD, [&](ENetPeer& p)  
-    {
-        send_data(p, std::move(compress));
-    });
+    state_visuals(event, std::move(state));
     return state.uid;
 }
 
@@ -249,7 +253,7 @@ void tile_update(ENetEvent &event, state state, block &block, world& w)
 {
     state.type = 05; // @note PACKET_SEND_TILE_UPDATE_DATA
     state.peer_state = 0x08;
-    std::vector<std::byte> data = compress_state(std::move(state));
+    std::vector<std::byte> data = compress_state(state);
 
     short pos = 56;
     data.resize(pos + 8zu); // @note {2} {2} 00 00 00 00
