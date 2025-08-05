@@ -17,6 +17,8 @@ int main()
     printf("ZTzTopia/enet %d.%d.%d\n", ENET_VERSION_MAJOR, ENET_VERSION_MINOR, ENET_VERSION_PATCH);
     printf("sqlite/sqlite3 %s\n", sqlite3_sourceid());
     printf("openssl/openssl %s\n", OpenSSL_version(OPENSSL_VERSION_STRING));
+    printf("sqlite/sqlite3 %s\n", sqlite3_sourceid());
+    printf("openssl/openssl %s\n", OpenSSL_version(OPENSSL_VERSION_STRING));
     
     std::filesystem::create_directory("db");
     init_shouhin_tachi();
